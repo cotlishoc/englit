@@ -23,24 +23,27 @@ class _AddWordScreenState extends State<AddWordScreen> {
     super.dispose();
   }
 
-  void _saveWord() {
+  void _saveWord() async {
     if (_formKey.currentState!.validate()) {
-      _firestoreService.addUserCustomWord(
+      // Сначала выполняем асинхронную операцию
+      await _firestoreService.addUserCustomWord(
         _wordController.text.trim(),
         _translationController.text.trim(),
-      ).then((_) {
-        // --- УЛУЧШЕНИЕ: Автоматически выбираем категорию "Мои слова" ---
-        Provider.of<CategoryState>(context, listen: false)
-            .setCategory('user_words', 'Мои слова');
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Слово добавлено!'), backgroundColor: Colors.green),
-        );
-        // Очищаем поля и закрываем клавиатуру
-        _wordController.clear();
-        _translationController.clear();
-        FocusScope.of(context).unfocus();
-      });
+      );
+
+      // --- ИСПРАВЛЕНИЕ: Добавляем проверку mounted перед использованием context ---
+      if (!mounted) return;
+
+      Provider.of<CategoryState>(context, listen: false)
+          .setCategory('user_words', 'Мои слова');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Слово добавлено!'), backgroundColor: Colors.green),
+      );
+
+      _wordController.clear();
+      _translationController.clear();
+      FocusScope.of(context).unfocus();
     }
   }
 

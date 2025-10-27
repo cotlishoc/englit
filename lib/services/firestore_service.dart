@@ -1,109 +1,113 @@
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/word_model.dart';
-import '../models/user_word_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
-  // --- МЕТОДЫ ДЛЯ ОБЩИХ ДАННЫХ ---
+  Stream<DocumentSnapshot> getUserStream() {
+    if (_uid == null) return const Stream.empty();
+    return _db.collection('users').doc(_uid).snapshots();
+  }
 
   Stream<QuerySnapshot> getCategoriesStream() {
     return _db.collection('category').orderBy('name').snapshots();
   }
-  
-  // --- НОВЫЙ ГЛАВНЫЙ МЕТОД ДЛЯ СЛОВАРЯ ---
-  /// Получает слова для категории вместе со статусом изучения для текущего пользователя.
+
   Future<List<Map<String, dynamic>>> getWordsWithStatusForCategory(String categoryId) async {
     if (_uid == null) return [];
-
-    // 1. Получаем все слова для выбранной категории
     List<WordModel> wordsInCategory = await getAllWordsInCategory(categoryId);
-
-    // 2. Получаем все статусы слов для пользователя
     final userWordsSnapshot = await _db.collection('users').doc(_uid).collection('userWords').get();
     final userStatuses = { for (var doc in userWordsSnapshot.docs) doc.id : doc.data()['status'] };
-
-    // 3. Соединяем слова с их статусами
     List<Map<String, dynamic>> result = [];
     for (var word in wordsInCategory) {
       result.add({
         'word': word,
-        'status': userStatuses[word.id] ?? 'new' // Статус: 'изучаю', 'изучено' или 'new'
+        'status': userStatuses[word.id] ?? 'new'
       });
     }
     return result;
   }
-  
+
   Future<List<WordModel>> getAllWordsInCategory(String categoryId) async {
+    QuerySnapshot snapshot;
     if (categoryId == 'user_words') {
       if (_uid == null) return [];
-      final snapshot = await _db.collection('users').doc(_uid).collection('customWords').get();
-      return snapshot.docs.map((doc) => WordModel.fromCustom(doc.data(), doc.id)).toList();
+      snapshot = await _db.collection('users').doc(_uid).collection('customWords').get();
+      return snapshot.docs.map((doc) => WordModel.fromCustom(doc.data() as Map<String, dynamic>, doc.id)).toList();
+    } 
+    else if (categoryId == 'all_words') {
+      snapshot = await _db.collection('words').get();
+    } 
+    else {
+      final categoryRef = _db.collection('category').doc(categoryId);
+      snapshot = await _db.collection('words').where('category', isEqualTo: categoryRef).get();
     }
-    final categoryRef = _db.collection('category').doc(categoryId);
-    final snapshot = await _db.collection('words').where('category', isEqualTo: categoryRef).get();
-    return snapshot.docs.map((doc) => WordModel.fromFirestore(doc.data(), doc.id)).toList();
+    return snapshot.docs.map((doc) => WordModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)).toList();
   }
 
-  // --- МЕТОДЫ ДЛЯ ИЗУЧЕНИЯ И ПОВТОРЕНИЯ ---
-
-  Future<WordModel?> getWordToStudy(String categoryId) async {
+  Future<WordModel?> getNewWordToStudy(String categoryId) async {
     if (_uid == null) return null;
-    final allWordsInCategory = await getAllWordsInCategory(categoryId);
-    if (allWordsInCategory.isEmpty) return null;
+    final allWords = await getAllWordsInCategory(categoryId);
+    if (allWords.isEmpty) return null;
     final userWordsSnapshot = await _db.collection('users').doc(_uid).collection('userWords').get();
-    final userWords = userWordsSnapshot.docs.map((doc) => UserWordModel.fromFirestore(doc.data(), doc.id)).toList();
-    List<WordModel> newWords = [];
-    List<WordModel> studyingWords = [];
-    for (var word in allWordsInCategory) {
-      final userWord = userWords.where((uw) => uw.wordId == word.id);
-      if (userWord.isEmpty) {
-        newWords.add(word);
-      } else if (userWord.first.status == 'изучаю') {
-        studyingWords.add(word);
+    final studiedWordIds = userWordsSnapshot.docs.map((doc) => doc.id).toSet();
+    for (final word in allWords) {
+      if (!studiedWordIds.contains(word.id)) {
+        return word;
       }
     }
-    final random = Random();
-    List<WordModel> wordsPool = [];
-    if (newWords.isNotEmpty && (studyingWords.isEmpty || random.nextDouble() < 0.7)) {
-      wordsPool.addAll(newWords);
-    } else if (studyingWords.isNotEmpty) {
-      wordsPool.addAll(studyingWords);
-    }
-    if (wordsPool.isEmpty) return null;
-    return wordsPool[random.nextInt(wordsPool.length)];
+    return null;
   }
 
   Future<List<WordModel>> getWordsToRepeat(String categoryId) async {
     if (_uid == null) return [];
-    if (categoryId == 'user_words') {
-        return getAllWordsInCategory(categoryId);
-    }
-    final userWordsSnapshot = await _db.collection('users').doc(_uid).collection('userWords').where('status', isEqualTo: 'изучаю').get();
+    final userWordsSnapshot = await _db.collection('users')
+      .doc(_uid)
+      .collection('userWords')
+      .where('status', isEqualTo: 'learning')
+      .get();
     if (userWordsSnapshot.docs.isEmpty) return [];
     final studyingWordIds = userWordsSnapshot.docs.map((doc) => doc.id).toList();
     if (studyingWordIds.isEmpty) return [];
-    final categoryRef = _db.collection('category').doc(categoryId);
-    final wordsSnapshot = await _db.collection('words').where(FieldPath.documentId, whereIn: studyingWordIds).where('category', isEqualTo: categoryRef).get();
-    return wordsSnapshot.docs.map((doc) => WordModel.fromFirestore(doc.data(), doc.id)).toList();
+    Query wordsQuery = _db.collection('words').where(FieldPath.documentId, whereIn: studyingWordIds);
+    if (categoryId != 'all_words' && categoryId != 'user_words') {
+      final categoryRef = _db.collection('category').doc(categoryId);
+      wordsQuery = wordsQuery.where('category', isEqualTo: categoryRef);
+    }
+    final wordsSnapshot = await wordsQuery.get();
+    // ИСПРАВЛЕНИЕ ЗДЕСЬ
+    return wordsSnapshot.docs.map((doc) => WordModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)).toList();
   }
 
-  Future<void> updateUserWordStatus(String wordId, String status) async {
+  Future<void> startLearningWord(String wordId) async {
     if (_uid == null) return;
     await _db.collection('users').doc(_uid).collection('userWords').doc(wordId).set({
-      'status': status,
-      'lastReviewed': FieldValue.serverTimestamp(),
+      'status': 'learning',
+      'startedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
   
-  // --- МЕТОДЫ ДЛЯ ЛИЧНОГО СЛОВАРЯ ---
+  Future<void> updateUserWordStatus(String wordId, String newStatus) async {
+    if (_uid == null) return;
+    final userWordRef = _db.collection('users').doc(_uid).collection('userWords').doc(wordId);
+    if (newStatus == 'learned') {
+      await _db.collection('users').doc(_uid).update({
+        'stats.totalLearnedWords': FieldValue.increment(1)
+      });
+    }
+    await userWordRef.set({
+      'status': newStatus,
+      'lastReviewed': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
 
-  Stream<QuerySnapshot> getUserCustomWordsStream() {
-    if (_uid == null) return const Stream.empty();
-    return _db.collection('users').doc(_uid).collection('customWords').orderBy('createdAt', descending: true).snapshots();
+  Future<void> updateUserSettings(Map<String, dynamic> settings) async {
+    if (_uid == null) return;
+    await _db.collection('users').doc(_uid).set({
+      'settings': settings
+    }, SetOptions(merge: true));
   }
 
   Future<void> addUserCustomWord(String word, String translation) async {

@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/firestore_service.dart';
 import '../state/category_state.dart';
 import 'add_word_screen.dart';
 import 'categories_screen.dart';
@@ -24,7 +26,7 @@ class _ModernCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.08),
+            color: const Color(0xFF388E3C).withOpacity(0.08),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -39,7 +41,6 @@ class _ModernCard extends StatelessWidget {
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  // Вспомогательная функция для проверки, выбрана ли категория
   void _navigateToScreen(BuildContext context, Widget screen) {
     final categoryState = Provider.of<CategoryState>(context, listen: false);
     if (categoryState.selectedCategoryId == null && screen is! AddWordScreen) {
@@ -59,6 +60,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final firestoreService = FirestoreService();
+
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 50,
@@ -82,7 +85,7 @@ class HomeScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.green.withOpacity(0.15),
+                      color: const Color(0xFF388E3C).withOpacity(0.15),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -96,60 +99,104 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: <Widget>[
-            _buildCategorySelector(context),
-            const SizedBox(height: 16.0),
-            _buildLargeCard(
-              context,
-              title: 'Изучить новые слова',
-              onTap: () => _navigateToScreen(context, const StudyScreen()),
-            ),
-            const SizedBox(height: 16.0),
-            Row(
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: firestoreService.getUserStream(),
+          builder: (context, snapshot) {
+            int totalLearned = 0;
+            int repetitions = 0;
+            if (snapshot.hasData && snapshot.data!.exists) {
+              final data = snapshot.data!.data() as Map<String, dynamic>;
+              totalLearned = data['stats']?['totalLearnedWords'] ?? 0;
+              repetitions = data['stats']?['repetitionsCount'] ?? 0;
+            }
+
+            return ListView(
+              padding: const EdgeInsets.all(16.0),
               children: <Widget>[
-                _buildSmallButton(
+                _buildCategorySelector(context),
+                const SizedBox(height: 16.0),
+                _buildLargeCard(
                   context,
-                  text: 'повторение слов',
-                  onTap: () => _navigateToScreen(context, const RepeatScreen()),
+                  title: 'Изучить новые слова',
+                  onTap: () => _navigateToScreen(context, const StudyScreen()),
                 ),
-                const SizedBox(width: 16.0),
-                _buildSmallButton(
-                  context,
-                  text: 'словарь',
-                  onTap: () => _navigateToScreen(context, const DictionaryScreen()),
+                const SizedBox(height: 16.0),
+                Row(
+                  children: <Widget>[
+                    _buildSmallButton(
+                      context,
+                      text: 'повторение слов',
+                      onTap: () => _navigateToScreen(context, const RepeatScreen()),
+                    ),
+                    const SizedBox(width: 16.0),
+                    _buildSmallButton(
+                      context,
+                      text: 'словарь',
+                      onTap: () => _navigateToScreen(context, const DictionaryScreen()),
+                    ),
+                    const SizedBox(width: 16.0),
+                    _buildSmallButton(
+                      context,
+                      text: 'добавить свое слово',
+                      onTap: () {
+                         Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const AddWordScreen()),
+                          );
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16.0),
-                _buildSmallButton(
+                const SizedBox(height: 16.0),
+                _buildLargeCard(
                   context,
-                  text: 'добавить свое слово',
-                  onTap: () {
-                     // Для добавления слова категория не нужна
-                     Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AddWordScreen()),
-                      );
-                  },
+                  title: 'Статистика',
+                  height: 250,
+                  content: snapshot.connectionState == ConnectionState.waiting
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildStatsContent(totalLearned, repetitions),
+                  onTap: () {},
                 ),
               ],
-            ),
-            const SizedBox(height: 16.0),
-            _buildLargeCard(
-              context,
-              title: 'статистика',
-              height: 250,
-              content: const Center(child: Text("Раздел статистики в разработке.", style: TextStyle(color: Colors.grey))),
-              onTap: () {},
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
   }
 
+  Widget _buildStatsContent(int learnedCount, int repetitionCount) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatRow(Icons.check_circle_outline, 'Всего изучено слов', '$learnedCount'),
+        _buildStatRow(Icons.repeat, 'Всего повторений', '$repetitionCount'),
+        const Expanded(
+          child: Center(
+            child: Text("График прогресса в разработке", style: TextStyle(color: Colors.grey))
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF388E3C)),
+          const SizedBox(width: 12),
+          Text(label, style: const TextStyle(fontSize: 16)),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+  
   Widget _buildCategorySelector(BuildContext context) {
-    // Consumer автоматически перерисовывает этот виджет при изменении CategoryState
     return Consumer<CategoryState>(
       builder: (context, categoryState, child) {
         return GestureDetector(

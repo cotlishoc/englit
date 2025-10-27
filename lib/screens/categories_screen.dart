@@ -31,20 +31,28 @@ class CategoriesScreen extends StatelessWidget {
             }).toList();
           }
 
-          // --- ИЗМЕНЕНИЕ: Добавляем нашу кастомную категорию в начало списка ---
+          // --- ИЗМЕНЕНИЕ: Добавляем наши кастомные категории в начало списка ---
           categories.insert(0, CategoryModel(id: 'user_words', name: 'Мои слова'));
+          categories.insert(0, CategoryModel(id: 'all_words', name: 'Все слова')); // <--- ВОТ ОНО
 
           return ListView.builder(
             padding: const EdgeInsets.all(8),
             itemCount: categories.length,
             itemBuilder: (context, index) {
               final category = categories[index];
-              final isCustom = category.id == 'user_words';
+              // --- ИЗМЕНЕНИЕ: Определяем иконку для каждой спец. категории ---
+              IconData leadingIcon = Icons.library_books_outlined;
+              if (category.id == 'user_words') {
+                leadingIcon = Icons.star;
+              } else if (category.id == 'all_words') {
+                leadingIcon = Icons.all_inclusive; // <--- Иконка для "Всех слов"
+              }
+
               return Card(
                 elevation: 2,
                 margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                 child: ListTile(
-                  leading: Icon(isCustom ? Icons.star : Icons.library_books_outlined),
+                  leading: Icon(leadingIcon),
                   title: Text(category.name, style: const TextStyle(fontWeight: FontWeight.w500)),
                   trailing: const Icon(Icons.arrow_forward_ios),
                   onTap: () {

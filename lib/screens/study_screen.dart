@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:just_audio/just_audio.dart'; // <--- Импорт
 import '../models/word_model.dart';
 import '../services/firestore_service.dart';
+import '../services/tts_service.dart';
 import '../state/category_state.dart';
 
 class StudyScreen extends StatefulWidget {
@@ -12,40 +12,50 @@ class StudyScreen extends StatefulWidget {
 }
 
 class _StudyScreenState extends State<StudyScreen> {
+  // --- СЕРВИСЫ ---
   final FirestoreService _firestoreService = FirestoreService();
-  final AudioPlayer _audioPlayer = AudioPlayer(); // <--- Создаем плеер
+  final TtsService _ttsService = TtsService();
+  
+  // --- СОСТОЯНИЕ ЭКРАНА ---
   Future<WordModel?>? _wordFuture;
+  // Ключ для корректной работы анимации смены карточек
   Key _cardKey = UniqueKey();
 
   @override
   void initState() {
     super.initState();
-    // Загружаем первое слово
+    // Безопасно вызываем загрузку слова после того, как первый кадр будет отрисован
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadNextWord();
     });
   }
 
-  @override
-  void dispose() {
-    _audioPlayer.dispose(); // <--- Очищаем ресурсы плеера
-    super.dispose();
-  }
-
+  /// Загружает следующее НОВОЕ слово из выбранной категории.
   void _loadNextWord() {
     final categoryId = Provider.of<CategoryState>(context, listen: false).selectedCategoryId;
     if (categoryId != null) {
       setState(() {
-        _wordFuture = _firestoreService.getWordToStudy(categoryId);
+        // Вызываем метод, который ищет именно неизученные слова
+        _wordFuture = _firestoreService.getNewWordToStudy(categoryId);
+        // Обновляем ключ, чтобы анимация сработала
         _cardKey = UniqueKey();
       });
     }
   }
 
-  void _updateWordStatusAndLoadNext(String wordId, String status) {
-    if (wordId.isNotEmpty) {
-       _firestoreService.updateUserWordStatus(wordId, status);
-    }
+  // --- ИЗМЕНЕНИЕ: Упрощенная логика ---
+  
+  /// Обрабатывает нажатие на кнопку "Начать учить".
+  /// Слово добавляется в список для повторений со статусом 'learning'.
+  void _startLearning(String wordId) {
+    _firestoreService.startLearningWord(wordId);
+    _loadNextWord();
+  }
+  
+  /// Обрабатывает нажатие на кнопку "Знаю слово".
+  /// Слово сразу помечается как выученное ('learned') и не попадает в повторения.
+  void _markAsLearnedAndLoadNext(String wordId) {
+    _firestoreService.updateUserWordStatus(wordId, 'learned');
     _loadNextWord();
   }
 
@@ -57,17 +67,31 @@ class _StudyScreenState extends State<StudyScreen> {
         child: FutureBuilder<WordModel?>(
           future: _wordFuture,
           builder: (context, snapshot) {
+            // 1. Пока идет загрузка, показываем индикатор
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const CircularProgressIndicator();
             }
+
+            // 2. Если слов нет (или все уже изучены), показываем сообщение
             if (!snapshot.hasData || snapshot.data == null) {
-              return const Text('Слова в этой категории закончились!');
+              return const Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Text(
+                  'Новых слов в этой категории нет. Отличная работа!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+              );
             }
 
+            // 3. Если слово есть, показываем карточку
             final word = snapshot.data!;
 
             return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
+              duration: const Duration(milliseconds: 400),
+              transitionBuilder: (child, animation) {
+                return ScaleTransition(scale: animation, child: child);
+              },
               child: Card(
                 key: _cardKey,
                 elevation: 4,
@@ -77,39 +101,55 @@ class _StudyScreenState extends State<StudyScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // --- Английское слово и кнопка озвучки ---
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(word.word, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold)),
-                          // --- ИЗМЕНЕНИЕ: Кнопка для аудио ---
-                          if (word.audioUrl.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(Icons.volume_up),
-                              onPressed: () async {
-                                try {
-                                  await _audioPlayer.setUrl(word.audioUrl);
-                                  _audioPlayer.play();
-                                } catch (e) {
-                                  print("Error playing audio: $e");
-                                }
-                              },
-                            ),
+                          Flexible(
+                            child: Text(
+                              word.word, 
+                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            )
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.volume_up, color: Colors.blueAccent),
+                            iconSize: 30,
+                            onPressed: () => _ttsService.speak(word.word),
+                          ),
                         ],
                       ),
-                      if(word.transcription.isNotEmpty) Text(word.transcription, style: const TextStyle(fontSize: 18, color: Colors.grey)),
+
+                      // --- Транскрипция (если есть) ---
+                      if (word.transcription.isNotEmpty)
+                        Text(
+                          word.transcription, 
+                          style: const TextStyle(fontSize: 18, color: Colors.grey)
+                        ),
+                      
                       const SizedBox(height: 20),
-                      Text(word.translation, style: const TextStyle(fontSize: 28)),
+
+                      // --- Перевод ---
+                      Text(
+                        word.translation, 
+                        style: const TextStyle(fontSize: 28),
+                        textAlign: TextAlign.center,
+                      ),
+                      
                       const SizedBox(height: 40),
+
+                      // --- Кнопки действий ---
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           ElevatedButton(
-                            onPressed: () => _updateWordStatusAndLoadNext(word.id, 'изучено'),
+                            onPressed: () => _markAsLearnedAndLoadNext(word.id),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[300]),
                             child: const Text('Знаю слово'),
                           ),
                           ElevatedButton(
-                            onPressed: () => _updateWordStatusAndLoadNext(word.id, 'изучаю'),
-                            child: const Text('Изучить'),
+                            onPressed: () => _startLearning(word.id),
+                            child: const Text('Начать учить'),
                           ),
                         ],
                       ),

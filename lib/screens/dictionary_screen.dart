@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:just_audio/just_audio.dart';
 import '../models/word_model.dart';
 import '../services/firestore_service.dart';
+import '../services/tts_service.dart';
 import '../state/category_state.dart';
 
 class DictionaryScreen extends StatefulWidget {
@@ -13,8 +13,11 @@ class DictionaryScreen extends StatefulWidget {
 }
 
 class _DictionaryScreenState extends State<DictionaryScreen> {
+  // --- СЕРВИСЫ ---
   final FirestoreService _firestoreService = FirestoreService();
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  final TtsService _ttsService = TtsService();
+
+  // --- СОСТОЯНИЕ ЭКРАНА ---
   late Future<List<Map<String, dynamic>>> _wordsFuture;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -33,10 +36,16 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Перезагружаем слова, если категория изменилась (хотя обычно на этот экран приходят с уже выбранной)
     _loadWords();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Загружает слова с их статусами для выбранной категории.
   void _loadWords() {
     final categoryId = Provider.of<CategoryState>(context, listen: false).selectedCategoryId;
     if (categoryId != null) {
@@ -46,28 +55,24 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    _searchController.dispose();
-    super.dispose();
+  /// Возвращает слово в список для повторений.
+  void _resetToLearning(String wordId) {
+    _firestoreService.updateUserWordStatus(wordId, 'learning').then((_) {
+      _loadWords();
+    });
   }
-  
-  void _playAudio(String url) async {
-    if (url.isNotEmpty) {
-      try {
-        await _audioPlayer.setUrl(url);
-        _audioPlayer.play();
-      } catch (e) {
-        print("Error playing audio: $e");
-      }
-    }
+
+  /// Помечает слово как полностью изученное.
+  void _markAsLearned(String wordId) {
+    _firestoreService.updateUserWordStatus(wordId, 'learned').then((_) {
+      _loadWords();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final categoryState = context.watch<CategoryState>();
-    final isCustomCategory = categoryState.selectedCategoryId == 'user_words';
+    final isCustomCategorySelected = categoryState.selectedCategoryId == 'user_words';
 
     return Scaffold(
       appBar: AppBar(title: Text('Словарь: ${categoryState.selectedCategoryName}')),
@@ -78,7 +83,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                labelText: 'Поиск',
+                labelText: 'Поиск по слову или переводу',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
               ),
@@ -90,6 +95,9 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Произошла ошибка загрузки слов.'));
                 }
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(child: Text('Нет слов в этой категории.'));
@@ -105,6 +113,10 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                   }).toList();
                 }
 
+                if (wordsWithStatus.isEmpty) {
+                  return const Center(child: Text('Ничего не найдено.'));
+                }
+
                 return ListView.builder(
                   itemCount: wordsWithStatus.length,
                   itemBuilder: (context, index) {
@@ -112,35 +124,63 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                     final WordModel word = item['word'];
                     final String status = item['status'];
 
+                    // --- ИЗМЕНЕНИЕ: Улучшенная логика для определения кастомных слов ---
+                    // Слово считается кастомным, если выбрана категория "Мои слова",
+                    // ИЛИ если у слова в принципе нет ссылки на категорию (это наш признак кастомного слова).
+                    final bool isCustomWord = isCustomCategorySelected || word.category == null;
+
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       child: ListTile(
                         title: Text(word.word),
                         subtitle: Text(word.translation),
-                        // Кнопка аудио
                         leading: IconButton(
-                          icon: Icon(Icons.volume_up, color: word.audioUrl.isNotEmpty ? Theme.of(context).primaryColor : Colors.grey),
-                          onPressed: () => _playAudio(word.audioUrl),
+                          icon: Icon(Icons.volume_up, color: Theme.of(context).primaryColor),
+                          onPressed: () => _ttsService.speak(word.word),
                         ),
-                        // Кнопка управления статусом
-                        trailing: isCustomCategory
-                          ? IconButton( // Для кастомных слов - кнопка удаления
+                        trailing: isCustomWord
+                          ? IconButton(
                               icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                              tooltip: 'Удалить слово',
                               onPressed: () {
-                                _firestoreService.deleteUserCustomWord(word.id);
-                                _loadWords(); // Обновляем список
+                                // Показываем диалог подтверждения перед удалением
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext ctx) {
+                                    return AlertDialog(
+                                      title: const Text('Подтвердить удаление'),
+                                      content: Text('Вы уверены, что хотите удалить слово "${word.word}"?'),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.of(ctx).pop(),
+                                          child: const Text('Отмена'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            _firestoreService.deleteUserCustomWord(word.id).then((_) {
+                                              _loadWords();
+                                            });
+                                            Navigator.of(ctx).pop();
+                                          },
+                                          child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
                               },
                             )
-                          : IconButton( // Для обычных слов - управление статусом
-                              icon: status == 'изучено' 
-                                ? const Icon(Icons.check_circle, color: Colors.green, semanticLabel: 'Знаю слово')
-                                : const Icon(Icons.school_outlined, color: Colors.grey, semanticLabel: 'Начать учить'),
-                              tooltip: status == 'изучено' ? 'Вернуть в изучение' : 'Отметить как "знаю"',
+                          : IconButton(
+                              icon: status == 'learned' 
+                                ? const Icon(Icons.check_circle, color: Colors.green)
+                                : const Icon(Icons.school_outlined, color: Colors.grey),
+                              tooltip: status == 'learned' ? 'Вернуть в изучение' : 'Отметить как "знаю"',
                               onPressed: () {
-                                final newStatus = status == 'изучено' ? 'изучаю' : 'изучено';
-                                _firestoreService.updateUserWordStatus(word.id, newStatus).then((_) {
-                                  _loadWords(); // Перезагружаем слова, чтобы увидеть изменения
-                                });
+                                if (status == 'learned') {
+                                  _resetToLearning(word.id);
+                                } else {
+                                  _markAsLearned(word.id);
+                                }
                               },
                             ),
                       ),

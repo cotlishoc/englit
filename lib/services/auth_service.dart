@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb; // Для определения платформы
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -8,51 +8,60 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  // Поток для отслеживания состояния входа (вошел пользователь или нет)
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Вход с помощью Google
   Future<User?> signInWithGoogle() async {
     try {
-      // 1. Начинаем процесс входа
       GoogleSignInAccount? googleUser;
 
       if (kIsWeb) {
-        // Для веба используем всплывающее окно
         final GoogleAuthProvider googleProvider = GoogleAuthProvider();
         final UserCredential userCredential = await _auth.signInWithPopup(googleProvider);
         return userCredential.user;
       } else {
-        // Для мобильных устройств
         googleUser = await _googleSignIn.signIn();
       }
 
-      if (googleUser == null) {
-        // Пользователь отменил вход
-        return null;
-      }
+      if (googleUser == null) return null;
 
-      // 2. Получаем данные аутентификации для Firebase
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // 3. Входим в Firebase с полученными данными
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
 
-      // 4. Сохраняем/обновляем данные пользователя в Firestore
       if (user != null) {
         final DocumentReference userDocRef = _firestore.collection('users').doc(user.uid);
-        
-        await userDocRef.set({
-          'displayName': user.displayName,
-          'email': user.email,
-          'photoURL': user.photoURL,
-          'lastLogin': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)); // merge:true чтобы не затереть другие данные
+        final docSnapshot = await userDocRef.get();
+
+        // --- ИЗМЕНЕНИЕ: Создаем профиль статистики и настроек, если пользователь новый ---
+        if (!docSnapshot.exists) {
+          // Пользователь заходит впервые, создаем для него полную структуру
+          await userDocRef.set({
+            'displayName': user.displayName,
+            'email': user.email,
+            'photoURL': user.photoURL,
+            'lastLogin': FieldValue.serverTimestamp(),
+            'createdAt': FieldValue.serverTimestamp(),
+            // Поля из ТЗ
+            'settings': {
+              'soundEnabled': true,
+            },
+            'stats': {
+              'totalLearnedWords': 0,
+              'repetitionsCount': 0,
+              'progressByTheme': {}, // e.g. {'software_id': 40, 'hardware_id': 25}
+            }
+          });
+        } else {
+          // Пользователь уже существует, просто обновляем дату входа
+          await userDocRef.update({
+            'lastLogin': FieldValue.serverTimestamp(),
+          });
+        }
       }
 
       return user;
@@ -62,9 +71,8 @@ class AuthService {
     }
   }
 
-  // Выход из системы
   Future<void> signOut() async {
-    await _googleSignIn.signOut(); // Выходим из аккаунта Google
-    await _auth.signOut();      // Выходим из Firebase
+    await _googleSignIn.signOut();
+    await _auth.signOut();
   }
 }
