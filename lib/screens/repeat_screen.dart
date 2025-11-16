@@ -165,7 +165,7 @@ class _RepeatScreenState extends State<RepeatScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Слов для повторения: ${words.length}', style: TextStyle(fontSize: 18, color: Colors.grey[700])),
+            Text('Слов для повторения: ${words.length}', style: TextStyle(fontSize: 18, color: Theme.of(context).textTheme.bodyMedium?.color)),
             const SizedBox(height: 20),
             const Text('Выберите тип упражнения', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
             const SizedBox(height: 24),
@@ -174,7 +174,7 @@ class _RepeatScreenState extends State<RepeatScreen> {
               child: ElevatedButton(
                 onPressed: () => _startQuiz(ExerciseType.multipleChoice, words),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 6,
@@ -188,8 +188,8 @@ class _RepeatScreenState extends State<RepeatScreen> {
               child: ElevatedButton(
                 onPressed: () => _startQuiz(ExerciseType.writeTranslation, words),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black87,
+                  backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.white,
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 2,
@@ -244,7 +244,7 @@ class _RepeatScreenState extends State<RepeatScreen> {
               child: Text(
                 _currentQuestion!.word,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)),
+                style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyMedium?.color),
               ),
             ),
             const SizedBox(height: 18),
@@ -275,8 +275,8 @@ class _RepeatScreenState extends State<RepeatScreen> {
         child: ElevatedButton(
           onPressed: () => _checkAnswer(option),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black87,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.white,
+            foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
             padding: const EdgeInsets.symmetric(vertical: 18),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
@@ -297,7 +297,8 @@ class _RepeatScreenState extends State<RepeatScreen> {
           decoration: const InputDecoration(
             labelText: 'Введите перевод',
             filled: true,
-            fillColor: Color(0xFFF3FFF5),
+            // Используем theme
+            fillColor: null,
             border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
           ),
           textAlign: TextAlign.center,
@@ -309,7 +310,7 @@ class _RepeatScreenState extends State<RepeatScreen> {
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () => _checkAnswer(_textController.text),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), padding: const EdgeInsets.symmetric(vertical: 16)),
+            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary, padding: const EdgeInsets.symmetric(vertical: 16)),
             child: const Text('Проверить', style: TextStyle(fontSize: 18)),
           ),
         ),

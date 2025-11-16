@@ -97,15 +97,11 @@ class _StudyScreenState extends State<StudyScreen> {
                 margin: const EdgeInsets.all(16),
                 padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF7FFF8), Color(0xFFE8F8EA)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2E7D32).withOpacity(0.08),
+                      color: Theme.of(context).shadowColor.withOpacity(0.08),
                       blurRadius: 24,
                       offset: const Offset(0, 8),
                     ),
@@ -120,13 +116,13 @@ class _StudyScreenState extends State<StudyScreen> {
                       children: [
                         Flexible(
                           child: Text(
-                            word.word, 
-                            style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)),
+                            word.word,
+                            style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
                             textAlign: TextAlign.center,
                           )
                         ),
                         IconButton(
-                          icon: const Icon(Icons.volume_up, color: Color(0xFF2E7D32)),
+                          icon: Icon(Icons.volume_up, color: Theme.of(context).colorScheme.primary),
                           iconSize: 30,
                           onPressed: () => _ttsService.speak(word.word),
                         ),
@@ -137,7 +133,7 @@ class _StudyScreenState extends State<StudyScreen> {
                     if (word.transcription.isNotEmpty)
                       Text(
                         word.transcription, 
-                        style: const TextStyle(fontSize: 18, color: Colors.grey)
+                        style: TextStyle(fontSize: 18, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
                       ),
                     
                     const SizedBox(height: 20),
@@ -145,7 +141,7 @@ class _StudyScreenState extends State<StudyScreen> {
                     // --- Перевод ---
                     Text(
                       word.translation, 
-                      style: const TextStyle(fontSize: 28, color: Color(0xFF2E7D32)),
+                      style: TextStyle(fontSize: 28, color: Theme.of(context).colorScheme.primary),
                       textAlign: TextAlign.center,
                     ),
                     
@@ -158,8 +154,8 @@ class _StudyScreenState extends State<StudyScreen> {
                         ElevatedButton(
                           onPressed: () => _markAsLearnedAndLoadNext(word.id),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[200],
-                            foregroundColor: Colors.black87,
+                            backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[200],
+                            foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -168,22 +164,22 @@ class _StudyScreenState extends State<StudyScreen> {
                         ElevatedButton(
                           onPressed: () => _startLearning(word.id),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF43A047),
+                            backgroundColor: Theme.of(context).colorScheme.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           child: const Text('Начать учить'),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-             );
-           },
-         ),
-       ),
-     );
+                       ],
+                     ),
+                   ],
+                 ),
+               ),
+              );
+            },
+          ),
+        ),
+      );
    }
  }

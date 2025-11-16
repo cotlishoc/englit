@@ -81,6 +81,60 @@ class FirestoreService {
     return wordsSnapshot.docs.map((doc) => WordModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)).toList();
   }
 
+  // Добавлен метод для получения ежедневной статистики по датам в диапазоне [from, to]
+  Future<Map<String, Map<String, int>>> getDailyStats(DateTime from, DateTime to) async {
+    if (_uid == null) return {};
+    final snapshot = await _db.collection('users').doc(_uid).collection('userWords').get();
+    final Map<String, Map<String, int>> daily = {};
+
+    DateTime start = DateTime(from.year, from.month, from.day);
+    DateTime end = DateTime(to.year, to.month, to.day, 23, 59, 59);
+
+    String formatDate(DateTime dt) {
+      final y = dt.year.toString().padLeft(4, '0');
+      final m = dt.month.toString().padLeft(2, '0');
+      final d = dt.day.toString().padLeft(2, '0');
+      return '$y-$m-$d';
+    }
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+
+      // Учёт начала изучения
+      if (data['startedAt'] != null) {
+        final ts = data['startedAt'] as Timestamp;
+        final dt = ts.toDate();
+        if (!dt.isBefore(start) && !dt.isAfter(end)) {
+          final key = formatDate(dt);
+          daily.putIfAbsent(key, () => {'learned': 0, 'learning': 0});
+          daily[key]!['learning'] = (daily[key]!['learning'] ?? 0) + 1;
+        }
+      }
+
+      // Учёт изменения статуса (последнее изменение)
+      if (data['lastReviewed'] != null) {
+        final ts = data['lastReviewed'] as Timestamp;
+        final dt = ts.toDate();
+        if (!dt.isBefore(start) && !dt.isAfter(end)) {
+          final key = formatDate(dt);
+          daily.putIfAbsent(key, () => {'learned': 0, 'learning': 0});
+          final status = data['status'] ?? 'learning';
+          if (status == 'learned') {
+            daily[key]!['learned'] = (daily[key]!['learned'] ?? 0) + 1;
+          } else {
+            daily[key]!['learning'] = (daily[key]!['learning'] ?? 0) + 1;
+          }
+        }
+      }
+    }
+
+    // Не добавляем дни без изменений — возвращаем только дни, в которых были события
+
+    // Сортируем по ключу (дате) перед возвратом
+    final sortedEntries = daily.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    return Map.fromEntries(sortedEntries);
+  }
+
   Future<void> startLearningWord(String wordId) async {
     if (_uid == null) return;
     await _db.collection('users').doc(_uid).collection('userWords').doc(wordId).set({

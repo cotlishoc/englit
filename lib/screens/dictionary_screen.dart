@@ -132,37 +132,31 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: status == 'learned'
-                              ? [Color(0xFFE8F5E9), Color(0xFFDFF3E0)]
-                              : [Color(0xFFF7FFF8), Color(0xFFEEFFF0)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Theme.of(context).shadowColor.withOpacity(0.04),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
                         ],
-                        border: Border.all(color: const Color(0xFFE8F5E9)),
+                        border: Border.all(color: Theme.of(context).dividerColor),
                       ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         title: Text(word.word, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                        subtitle: Text(word.translation, style: const TextStyle(color: Colors.black87)),
+                        subtitle: Text(word.translation, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
                         leading: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () => _ttsService.speak(word.word),
                           child: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFB9F6CA),
+                              color: Theme.of(context).colorScheme.primaryContainer,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.volume_up, color: Color(0xFF2E7D32)),
+                            child: Icon(Icons.volume_up, color: Theme.of(context).colorScheme.primary),
                           ),
                         ),
                         trailing: Column(
@@ -211,7 +205,7 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: status == 'learned' ? const Color(0xFFDFF3E0) : const Color(0xFFF0FFF4),
+                                    color: Theme.of(context).brightness == Brightness.dark ? (status == 'learned' ? const Color(0xFF2A2A2A) : const Color(0xFF222222)) : (status == 'learned' ? const Color(0xFFDFF3E0) : const Color(0xFFF0FFF4)),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
@@ -219,14 +213,14 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                                     children: [
                                       Icon(
                                         status == 'learned' ? Icons.check_circle : Icons.school_outlined,
-                                        color: status == 'learned' ? const Color(0xFF2E7D32) : Colors.grey,
+                                        color: status == 'learned' ? Theme.of(context).colorScheme.primary : Colors.grey,
                                         size: 18,
                                       ),
                                       const SizedBox(width: 6),
                                       Text(
                                         status == 'learned' ? 'Знаю' : 'Учить',
                                         style: TextStyle(
-                                          color: status == 'learned' ? const Color(0xFF2E7D32) : Colors.grey[700],
+                                          color: status == 'learned' ? Theme.of(context).colorScheme.primary : Colors.grey[700],
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart'; // Импортируем provider
 import '../services/auth_service.dart';
+import '../state/theme_state.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -88,6 +89,20 @@ class ProfileScreen extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Кнопка переключения темы
+              ElevatedButton.icon(
+                onPressed: () {
+                  Provider.of<ThemeState>(context, listen: false).toggle();
+                },
+                icon: const Icon(Icons.brightness_4_outlined),
+                label: const Text('Переключить тему'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[200],
+                  foregroundColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
               ),
             ],
