@@ -124,10 +124,8 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                     final WordModel word = item['word'];
                     final String status = item['status'];
 
-                    // --- ИЗМЕНЕНИЕ: Улучшенная логика для определения кастомных слов ---
-                    // Слово считается кастомным, если выбрана категория "Мои слова",
-                    // ИЛИ если у слова в принципе нет ссылки на категорию (это наш признак кастомного слова).
-                    final bool isCustomWord = isCustomCategorySelected || word.category == null;
+                    // --- Кастомное слово: если выбрана категория "Мои слова" ---
+                    final bool isCustomWord = isCustomCategorySelected;
 
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -162,38 +160,77 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            if (isCustomWord)
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                tooltip: 'Удалить слово',
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (BuildContext ctx) {
-                                      return AlertDialog(
-                                        title: const Text('Подтвердить удаление'),
-                                        content: Text('Вы уверены, что хотите удалить слово "${word.word}"?'),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.of(ctx).pop(),
-                                            child: const Text('Отмена'),
+                            if (isCustomWord) ...[
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (status == 'learned') {
+                                        _resetToLearning(word.id);
+                                      } else {
+                                        _markAsLearned(word.id);
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).brightness == Brightness.dark ? (status == 'learned' ? const Color(0xFF2A2A2A) : const Color(0xFF222222)) : (status == 'learned' ? const Color(0xFFDFF3E0) : const Color(0xFFF0FFF4)),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            status == 'learned' ? Icons.check_circle : Icons.school_outlined,
+                                            color: status == 'learned' ? Theme.of(context).colorScheme.primary : Colors.grey,
+                                            size: 18,
                                           ),
-                                          TextButton(
-                                            onPressed: () {
-                                              _firestoreService.deleteUserCustomWord(word.id).then((_) {
-                                                _loadWords();
-                                              });
-                                              Navigator.of(ctx).pop();
-                                            },
-                                            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            status == 'learned' ? 'Знаю' : 'Учить',
+                                            style: TextStyle(
+                                              color: status == 'learned' ? Theme.of(context).colorScheme.primary : Colors.grey[700],
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ],
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                    tooltip: 'Удалить слово',
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (BuildContext ctx) {
+                                          return AlertDialog(
+                                            title: const Text('Подтвердить удаление'),
+                                            content: Text('Вы уверены, что хотите удалить слово "${word.word}"?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.of(ctx).pop(),
+                                                child: const Text('Отмена'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  _firestoreService.deleteUserCustomWord(word.id).then((_) {
+                                                    _loadWords();
+                                                  });
+                                                  Navigator.of(ctx).pop();
+                                                },
+                                                child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                                              ),
+                                            ],
+                                          );
+                                        },
                                       );
                                     },
-                                  );
-                                },
-                              )
-                            else ...[
+                                  ),
+                                ],
+                              ),
+                            ] else ...[
                               GestureDetector(
                                 onTap: () {
                                   if (status == 'learned') {

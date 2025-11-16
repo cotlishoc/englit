@@ -22,6 +22,7 @@ class FirestoreService {
     final userStatuses = { for (var doc in userWordsSnapshot.docs) doc.id : doc.data()['status'] };
     List<Map<String, dynamic>> result = [];
     for (var word in wordsInCategory) {
+      // --- Для пользовательских слов: статус тоже из userWords ---
       result.add({
         'word': word,
         'status': userStatuses[word.id] ?? 'new'
@@ -176,5 +177,33 @@ class FirestoreService {
   Future<void> deleteUserCustomWord(String docId) async {
     if (_uid == null) return;
     await _db.collection('users').doc(_uid).collection('customWords').doc(docId).delete();
+  }
+
+  // Проверка: есть ли такое слово в основной базе или в кастомных словах (без учета регистра)
+  Future<bool> checkWordExists(String word) async {
+    final lowerWord = word.toLowerCase();
+    
+    // Проверка в основной базе
+    final mainQuery = await _db.collection('words')
+      .get();
+    for (var doc in mainQuery.docs) {
+      final docWord = (doc.data()['word'] as String?)?.toLowerCase();
+      if (docWord == lowerWord) {
+        return true;
+      }
+    }
+    
+    // Проверка в кастомных словах пользователя
+    if (_uid != null) {
+      final customQuery = await _db.collection('users').doc(_uid).collection('customWords').get();
+      for (var doc in customQuery.docs) {
+        final docWord = (doc.data()['word'] as String?)?.toLowerCase();
+        if (docWord == lowerWord) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
   }
 }

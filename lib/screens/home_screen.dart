@@ -24,6 +24,7 @@ class _ModernCard extends StatelessWidget {
     final Color bottom = isDark ? const Color(0xFF3A0B46) : const Color(0xFFE8F8EA);
     final shadowColor = isDark ? Colors.black : theme.colorScheme.primary.withOpacity(0.12);
 
+    // --- Скругление всегда одинаковое, не зависит от темы ---
     return Container(
       width: double.infinity,
       height: height,
@@ -34,7 +35,7 @@ class _ModernCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(24), // фиксированное скругление
         boxShadow: [
           BoxShadow(
             color: shadowColor,
@@ -113,24 +114,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPeriodSelector() {
     final options = ['Все', '3 месяца', 'Месяц', 'Неделя'];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
       children: options.map((opt) {
-        final selected = opt == _period || (opt == '3 месяца' && _period == '3 месяца');
-        return Padding(
-          padding: const EdgeInsets.only(left: 8.0),
-          child: ChoiceChip(
-            label: Text(opt),
-            selected: selected,
-            onSelected: (v) {
-              if (v) {
-                setState(() => _period = opt);
-                _loadStats();
-              }
+          final selected = opt == _period || (opt == '3 месяца' && _period == '3 месяца');
+          return Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: ChoiceChip(
+              label: Text(opt),
+              selected: selected,
+              onSelected: (v) {
+                if (v) {
+                  setState(() => _period = opt);
+                  _loadStats();
+                }
             },
-          ),
-        );
-      }).toList(),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -138,7 +141,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_loadingStats) return const Center(child: CircularProgressIndicator());
     if (_dailyStats.isEmpty) return const Center(child: Text('Нет данных для выбранного периода', style: TextStyle(color: Colors.grey)));
 
-    // Генерируем последовательность ключей периодов (чтобы включать пустые периоды)
     final Map<String, Map<String, int>> agg = {};
     String fmtDay(DateTime d) => '${d.day.toString().padLeft(2,'0')}.${d.month.toString().padLeft(2,'0')}.${d.year.toString().substring(2)}';
 
@@ -146,38 +148,33 @@ class _HomeScreenState extends State<HomeScreen> {
     final to = DateTime.now();
 
     if (_period == 'Все') {
-      // месяцы от from до to
       DateTime cur = DateTime(from.year, from.month, 1);
       final endMonth = DateTime(to.year, to.month, 1);
       while (!cur.isAfter(endMonth)) {
         final key = '${cur.year}-${cur.month.toString().padLeft(2,'0')}';
-        agg.putIfAbsent(key, () => {'learned': 0, 'learning': 0});
+        agg[key] = {'learned': 0, 'learning': 0};
         cur = DateTime(cur.year, cur.month + 1, 1);
       }
     } else if (_period == '3 месяца' || _period == 'Месяц') {
-      // недели (понедельники) от from до to
-      DateTime cur = DateTime(from.year, from.month, from.day).subtract(Duration(days: (from.weekday - 1)));
-      final end = to;
-      while (!cur.isAfter(end)) {
+      DateTime cur = from.subtract(Duration(days: from.weekday - 1));
+      while (!cur.isAfter(to)) {
         final key = '${cur.year}-${cur.month.toString().padLeft(2,'0')}-${cur.day.toString().padLeft(2,'0')}';
-        agg.putIfAbsent(key, () => {'learned': 0, 'learning': 0});
+        agg[key] = {'learned': 0, 'learning': 0};
         cur = cur.add(const Duration(days: 7));
       }
     } else {
-      // Неделя — дни
-      DateTime cur = DateTime(from.year, from.month, from.day);
-      final end = DateTime(to.year, to.month, to.day);
-      while (!cur.isAfter(end)) {
+      DateTime cur = from;
+      while (!cur.isAfter(to)) {
         final key = '${cur.year}-${cur.month.toString().padLeft(2,'0')}-${cur.day.toString().padLeft(2,'0')}';
-        agg.putIfAbsent(key, () => {'learned': 0, 'learning': 0});
+        agg[key] = {'learned': 0, 'learning': 0};
         cur = cur.add(const Duration(days: 1));
       }
     }
 
-    // Добавляем реальные события в соответствующие периоды
     for (var e in _dailyStats.entries) {
       final dt = DateTime.parse(e.key);
       String key;
+
       if (_period == 'Все') {
         key = '${dt.year}-${dt.month.toString().padLeft(2,'0')}';
       } else if (_period == '3 месяца' || _period == 'Месяц') {
@@ -186,77 +183,70 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         key = e.key;
       }
+
       agg.putIfAbsent(key, () => {'learned': 0, 'learning': 0});
-      agg[key]!['learned'] = (agg[key]!['learned'] ?? 0) + (e.value['learned'] ?? 0);
-      agg[key]!['learning'] = (agg[key]!['learning'] ?? 0) + (e.value['learning'] ?? 0);
+      agg[key]!['learned'] =
+          (agg[key]!['learned'] ?? 0) + (e.value['learned'] ?? 0);
+      agg[key]!['learning'] =
+          (agg[key]!['learning'] ?? 0) + (e.value['learning'] ?? 0);
     }
 
     final entries = agg.entries.toList()..sort((a,b) => a.key.compareTo(b.key));
+
     int maxVal = 1;
     for (var e in entries) {
       final sum = (e.value['learned'] ?? 0) + (e.value['learning'] ?? 0);
       if (sum > maxVal) maxVal = sum;
     }
 
-    // компоненты: слева ось, справа горизонтальная прокрутка столбцов
-    final theme = Theme.of(context);
-    final axisColor = theme.textTheme.bodyMedium?.color ?? Colors.grey;
-    final learnedColor = theme.colorScheme.primary; // в dark теме будет фиолетовый
-    final learningColor = theme.colorScheme.primaryContainer;
+    final axisColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.grey;
+    final learnedColor = Theme.of(context).colorScheme.primary;
+    final learningColor = Theme.of(context).colorScheme.primaryContainer;
 
-    return SizedBox(
-      height: 200,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // Y-ось
-          SizedBox(
-            width: 40,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(maxVal.toString(), style: TextStyle(fontSize: 12, color: axisColor)),
-                Text(((maxVal / 2).ceil()).toString(), style: TextStyle(fontSize: 12, color: axisColor)),
-                Text('0', style: TextStyle(fontSize: 12, color: axisColor)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: entries.map((e) {
-                  final learned = e.value['learned'] ?? 0;
-                  final learning = e.value['learning'] ?? 0;
-                  final barMaxHeight = 140.0;
-                  final learnedH = maxVal == 0 ? 0.0 : (learned / maxVal) * barMaxHeight;
-                  final learningH = maxVal == 0 ? 0.0 : (learning / maxVal) * barMaxHeight;
+    const double chartHeight = 140.0;
+    const double labelHeight = 36.0;
 
-                  String label;
-                  if (_period == 'Все') {
-                    final parts = e.key.split('-');
-                    final y = parts[0];
-                    final m = parts[1];
-                    label = '${m}.${y.substring(2)}'; // mm.yy
-                  } else {
-                    final dt = DateTime.parse(e.key);
-                    label = fmtDay(dt);
-                  }
+    return Column(
+      children: [
+        // Верхняя часть: ось Y + столбцы (ровно chartHeight)
+        SizedBox(
+          height: chartHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Y-ось
+              SizedBox(
+                width: 40,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(maxVal.toString(), style: TextStyle(fontSize: 12, color: axisColor)),
+                    Text(((maxVal / 2).ceil()).toString(), style: TextStyle(fontSize: 12, color: axisColor)),
+                    Text('0', style: TextStyle(fontSize: 12, color: axisColor)),
+                  ],
+                ),
+              ),
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        // bar container
-                        Container(
+              const SizedBox(width: 8),
+
+              // Прокручиваемые бары — ровно chartHeight
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: entries.map((e) {
+                      final learned = e.value['learned'] ?? 0;
+                      final learning = e.value['learning'] ?? 0;
+
+                      final learnedH = maxVal == 0 ? 0.0 : (learned / maxVal) * chartHeight;
+                      final learningH = maxVal == 0 ? 0.0 : (learning / maxVal) * chartHeight;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: SizedBox(
                           width: 28,
-                          height: learnedH + learningH == 0 ? 6 : (learnedH + learningH),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
+                          height: chartHeight,
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -265,52 +255,96 @@ class _HomeScreenState extends State<HomeScreen> {
                                   height: learnedH,
                                   width: 28,
                                   color: learnedColor,
-                                  child: Center(child: Text(learned.toString(), style: TextStyle(fontSize: 10, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.white))),
+                                  alignment: Alignment.center,
+                                  child: Text(learned.toString(), style: const TextStyle(fontSize: 10, color: Colors.white)),
                                 ),
                               if (learningH > 0)
                                 Container(
                                   height: learningH,
                                   width: 28,
                                   color: learningColor,
-                                  child: Center(child: Text(learning.toString(), style: TextStyle(fontSize: 10, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black))),
+                                  alignment: Alignment.center,
+                                  child: Text(learning.toString(), style: const TextStyle(fontSize: 10, color: Colors.black)),
                                 ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        SizedBox(width: 48, child: Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 10, color: axisColor))),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+
+        // Нижняя часть: подписи дат (отдельно)
+        SizedBox(
+          height: labelHeight,
+          child: Row(
+            children: [
+              const SizedBox(width: 40), // Отступ под ось Y
+              const SizedBox(width: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: entries.map((e) {
+                      String label;
+                      if (_period == 'Все') {
+                        final parts = e.key.split('-');
+                        label = '${parts[1]}.${parts[0].substring(2)}';
+                      } else {
+                        final dt = DateTime.parse(e.key);
+                        label = fmtDay(dt);
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: SizedBox(
+                          width: 48,
+                          child: Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 10, color: axisColor)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
+
   Widget _buildStatsContent(int learnedCount, int repetitionCount) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final learnedColor = Theme.of(context).colorScheme.primary;
+    final learningColor = Theme.of(context).colorScheme.primaryContainer;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStatRow(Icons.check_circle_outline, 'Всего изучено слов', '$learnedCount'),
         const SizedBox(height: 8),
+        // Поставим селектор периода отдельно над графиком
         _buildPeriodSelector(),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
+        // График теперь размещён в своем контролируемом контейнере
         _buildHistogram(),
         const SizedBox(height: 8),
+        // Легенда: цвета зависят от темы
         Row(
-          children: const [
-            SizedBox(width: 10),
-            Icon(Icons.stop, size: 12, color: Color(0xFF2E7D32)),
-            SizedBox(width: 6),
-            Text('learned', style: TextStyle(fontSize: 12)),
-            SizedBox(width: 12),
-            Icon(Icons.stop, size: 12, color: Color(0xFFB9F6CA)),
-            SizedBox(width: 6),
-            Text('learning', style: TextStyle(fontSize: 12)),
+          children: [
+            const SizedBox(width: 10),
+            Icon(Icons.stop, size: 12, color: learnedColor),
+            const SizedBox(width: 6),
+            const Text('learned', style: TextStyle(fontSize: 12)),
+            const SizedBox(width: 12),
+            Icon(Icons.stop, size: 12, color: learningColor),
+            const SizedBox(width: 6),
+            const Text('learning', style: TextStyle(fontSize: 12)),
           ],
         ),
       ],

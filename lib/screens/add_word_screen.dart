@@ -25,11 +25,21 @@ class _AddWordScreenState extends State<AddWordScreen> {
 
   void _saveWord() async {
     if (_formKey.currentState!.validate()) {
+      final word = _wordController.text.trim();
+      final translation = _translationController.text.trim();
+
+      // --- Проверка: есть ли такое слово в основной базе ---
+      final exists = await _firestoreService.checkWordExists(word);
+      if (exists) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Такое слово уже есть в базе!'), backgroundColor: Colors.orange),
+        );
+        return;
+      }
+
       // Сначала выполняем асинхронную операцию
-      await _firestoreService.addUserCustomWord(
-        _wordController.text.trim(),
-        _translationController.text.trim(),
-      );
+      await _firestoreService.addUserCustomWord(word, translation);
 
       // --- ИСПРАВЛЕНИЕ: Добавляем проверку mounted перед использованием context ---
       if (!mounted) return;

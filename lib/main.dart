@@ -53,11 +53,24 @@ class MyApp extends StatelessWidget {
                 titleTextStyle: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.bold, fontSize: 22),
               ),
               textTheme: const TextTheme(bodyMedium: TextStyle(color: Color(0xFF1B5E20)), headlineMedium: TextStyle(color: Color(0xFF1B5E20))),
-              cardTheme: CardThemeData(color: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), elevation: 4),
-              elevatedButtonTheme: ElevatedButtonThemeData(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF43A047), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), elevation: 4),
+              cardTheme: CardThemeData(
+                color: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), // фиксированное скругление
+                elevation: 4,
               ),
-              inputDecorationTheme: InputDecorationTheme(filled: true, fillColor: const Color(0xFFEFF7EF), border: OutlineInputBorder(borderRadius: BorderRadius.circular(20))),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF43A047),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), // фиксированное скругление
+                  elevation: 4,
+                ),
+              ),
+              inputDecorationTheme: InputDecorationTheme(
+                filled: true,
+                fillColor: const Color(0xFFEFF7EF),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)), // фиксированное скругление
+              ),
             ),
             darkTheme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF4A148C), brightness: Brightness.dark),
@@ -71,7 +84,11 @@ class MyApp extends StatelessWidget {
                 titleTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
               ),
               textTheme: const TextTheme(bodyMedium: TextStyle(color: Colors.white), headlineMedium: TextStyle(color: Colors.white)),
-              cardTheme: CardThemeData(color: const Color(0xFF1B1B1B), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), elevation: 4),
+              cardTheme: CardThemeData(
+                color: const Color(0xFF1B1B1B),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), // фиксированное скругление
+                elevation: 4,
+              ),
             ),
             home: const AuthWrapper(),
           );

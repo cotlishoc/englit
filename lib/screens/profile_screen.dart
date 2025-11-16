@@ -14,6 +14,11 @@ class ProfileScreen extends StatelessWidget {
     // Получаем AuthService из Provider'а для вызова метода signOut
     final authService = Provider.of<AuthService>(context, listen: false);
 
+    // Используем цвета из темы, чтобы ник и email были видны в любой теме
+    final theme = Theme.of(context);
+    final nicknameColor = theme.textTheme.headlineMedium?.color ?? theme.textTheme.bodyMedium?.color;
+    final emailColor = theme.textTheme.bodyMedium?.color?.withOpacity(0.8) ?? Colors.grey;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Личный кабинет'),
@@ -51,10 +56,10 @@ class ProfileScreen extends StatelessWidget {
                 // Используем оператор '??' для предоставления значения по умолчанию
                 user?.displayName ?? "Пользователь",
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87, // Используем более мягкий черный
+                  color: nicknameColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -62,8 +67,8 @@ class ProfileScreen extends StatelessWidget {
               // --- EMAIL ПОЛЬЗОВАТЕЛЯ ---
               Text(
                 user?.email ?? "Email не указан",
-                style: const TextStyle(
-                  color: Colors.grey,
+                style: TextStyle(
+                  color: emailColor,
                   fontSize: 16,
                 ),
               ),
@@ -89,6 +94,7 @@ class ProfileScreen extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // фиксированное скругление
                 ),
               ),
               const SizedBox(height: 12),
@@ -103,6 +109,7 @@ class ProfileScreen extends StatelessWidget {
                   backgroundColor: Colors.grey[200],
                   foregroundColor: Colors.black87,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // фиксированное скругление
                 ),
               ),
             ],

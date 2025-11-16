@@ -3,10 +3,11 @@ import 'package:provider/provider.dart';
 import '../models/word_model.dart';
 import '../services/firestore_service.dart';
 import '../state/category_state.dart';
+import '../services/tts_service.dart';
 import 'dart:math';
 
 // Тип упражнения в викторине
-enum ExerciseType { none, multipleChoice, writeTranslation }
+enum ExerciseType { none, multipleChoice, writeTranslation, flashcards }
 
 class RepeatScreen extends StatefulWidget {
   const RepeatScreen({super.key});
@@ -29,6 +30,7 @@ class _RepeatScreenState extends State<RepeatScreen> {
   int _questionIndex = 0;
   bool _showPostAnswerOptions = false;
   final _textController = TextEditingController();
+  final TtsService _ttsService = TtsService();
 
   @override
   void initState() {
@@ -159,13 +161,15 @@ class _RepeatScreenState extends State<RepeatScreen> {
 
   /// Виджет для выбора типа упражнения.
   Widget _buildTypeSelection(List<WordModel> words) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return SizedBox.expand(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Слов для повторения: ${words.length}', style: TextStyle(fontSize: 18, color: Theme.of(context).textTheme.bodyMedium?.color)),
+            Text('Слов для повторения: ${words.length}', style: TextStyle(fontSize: 18, color: theme.textTheme.bodyMedium?.color)),
             const SizedBox(height: 20),
             const Text('Выберите тип упражнения', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
             const SizedBox(height: 24),
@@ -174,7 +178,8 @@ class _RepeatScreenState extends State<RepeatScreen> {
               child: ElevatedButton(
                 onPressed: () => _startQuiz(ExerciseType.multipleChoice, words),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+                  foregroundColor: isDark ? Colors.white : Colors.black87,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 6,
@@ -188,13 +193,28 @@ class _RepeatScreenState extends State<RepeatScreen> {
               child: ElevatedButton(
                 onPressed: () => _startQuiz(ExerciseType.writeTranslation, words),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.white,
-                  foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                  backgroundColor: isDark ? Colors.grey[800] : Colors.white,
+                  foregroundColor: isDark ? Colors.white : Colors.black87,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 2,
                 ),
                 child: const Text('Написать перевод', style: TextStyle(fontSize: 18)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _startQuiz(ExerciseType.flashcards, words),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDark ? Colors.grey[850] : Colors.white,
+                  foregroundColor: isDark ? Colors.white : Colors.black87,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                ),
+                child: const Text('Пролистывание карточек', style: TextStyle(fontSize: 18)),
               ),
             ),
           ],
@@ -223,6 +243,108 @@ class _RepeatScreenState extends State<RepeatScreen> {
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), padding: const EdgeInsets.symmetric(vertical: 14)),
                   child: const Text('Отлично', style: TextStyle(fontSize: 18)),
                 ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // --- Новый режим: пролистывание карточек ---
+    if (_exerciseType == ExerciseType.flashcards) {
+      return SizedBox.expand(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.of(context).size.width * 0.04, // 4% от ширины экрана
+            vertical: 24.0,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).shadowColor.withOpacity(0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: MediaQuery.of(context).size.height * 0.04, // 4% от высоты экрана
+                    horizontal: MediaQuery.of(context).size.width * 0.04,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _currentQuestion!.word,
+                              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.volume_up, color: Theme.of(context).colorScheme.primary),
+                            iconSize: 30,
+                            onPressed: () => _ttsService.speak(_currentQuestion!.word),
+                          ),
+                        ],
+                      ),
+                      if (_currentQuestion!.transcription.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(_currentQuestion!.transcription, style: TextStyle(fontSize: 18, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7))),
+                        ),
+                      const SizedBox(height: 16),
+                      Text(_currentQuestion!.translation, style: TextStyle(fontSize: 24, color: Theme.of(context).colorScheme.primary)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: ElevatedButton(
+                        onPressed: () => _nextQuestion(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Дальше'),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: ElevatedButton(
+                        onPressed: () => _nextQuestion(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[200],
+                          foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Я знаю'),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -289,6 +411,7 @@ class _RepeatScreenState extends State<RepeatScreen> {
 
   Widget _buildWriteTranslation() {
     if (_showPostAnswerOptions) return Column(children: _buildPostAnswerOptions());
+    // В режиме ввода (проверка)
     return Column(
       children: [
         const SizedBox(height: 12),
@@ -310,7 +433,12 @@ class _RepeatScreenState extends State<RepeatScreen> {
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () => _checkAnswer(_textController.text),
-            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary, padding: const EdgeInsets.symmetric(vertical: 16)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white, // явный цвет, чтобы был виден в темной теме
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
             child: const Text('Проверить', style: TextStyle(fontSize: 18)),
           ),
         ),
@@ -327,13 +455,21 @@ class _RepeatScreenState extends State<RepeatScreen> {
         width: double.infinity,
         child: ElevatedButton(
           onPressed: () => _nextQuestion(),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), padding: const EdgeInsets.symmetric(vertical: 14)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2E7D32),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
           child: const Text('Продолжить', style: TextStyle(fontSize: 18)),
         ),
       ),
       const SizedBox(height: 12),
       TextButton(
         onPressed: () => _nextQuestion(true),
+        style: TextButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
         child: const Text('Я знаю это слово (убрать из повторений)', style: TextStyle(fontSize: 16)),
       ),
     ];

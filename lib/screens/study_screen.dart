@@ -94,8 +94,14 @@ class _StudyScreenState extends State<StudyScreen> {
               },
               child: Container(
                 key: _cardKey,
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+                margin: EdgeInsets.symmetric(
+                  horizontal: MediaQuery.of(context).size.width * 0.04,
+                  vertical: 16,
+                ),
+                padding: EdgeInsets.symmetric(
+                  vertical: MediaQuery.of(context).size.height * 0.04,
+                  horizontal: MediaQuery.of(context).size.width * 0.04,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
@@ -144,6 +150,20 @@ class _StudyScreenState extends State<StudyScreen> {
                       style: TextStyle(fontSize: 28, color: Theme.of(context).colorScheme.primary),
                       textAlign: TextAlign.center,
                     ),
+
+                    // --- Пример использования (если есть) ---
+                    if (word.example.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                        '"${word.example}"',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontStyle: FontStyle.italic,
+                          color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.8),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                     
                     const SizedBox(height: 40),
 
@@ -157,7 +177,7 @@ class _StudyScreenState extends State<StudyScreen> {
                             backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800] : Colors.grey[200],
                             foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // одинаковое скругление
                           ),
                           child: const Text('Знаю слово'),
                         ),
@@ -167,7 +187,7 @@ class _StudyScreenState extends State<StudyScreen> {
                             backgroundColor: Theme.of(context).colorScheme.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // одинаковое скругление
                           ),
                           child: const Text('Начать учить'),
                         ),
