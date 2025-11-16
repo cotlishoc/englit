@@ -22,13 +22,17 @@ class _ModernCard extends StatelessWidget {
       height: height,
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: LinearGradient(
+          colors: [Color(0xFFF3FFF5), Color(0xFFE8F8EA)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF388E3C).withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF2E7D32).withOpacity(0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -186,7 +190,14 @@ class HomeScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF388E3C)),
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: const Color(0xFF2E7D32)),
+          ),
           const SizedBox(width: 12),
           Text(label, style: const TextStyle(fontSize: 16)),
           const Spacer(),
@@ -217,7 +228,14 @@ class HomeScreen extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios, size: 20, color: Color(0xFF388E3C)),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFB9F6CA),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF2E7D32)),
+                ),
               ],
             ),
           ),

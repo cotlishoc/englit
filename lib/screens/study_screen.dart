@@ -92,75 +92,98 @@ class _StudyScreenState extends State<StudyScreen> {
               transitionBuilder: (child, animation) {
                 return ScaleTransition(scale: animation, child: child);
               },
-              child: Card(
+              child: Container(
                 key: _cardKey,
-                elevation: 4,
                 margin: const EdgeInsets.all(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // --- Английское слово и кнопка озвучки ---
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              word.word, 
-                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
-                              textAlign: TextAlign.center,
-                            )
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.volume_up, color: Colors.blueAccent),
-                            iconSize: 30,
-                            onPressed: () => _ttsService.speak(word.word),
-                          ),
-                        ],
-                      ),
-
-                      // --- Транскрипция (если есть) ---
-                      if (word.transcription.isNotEmpty)
-                        Text(
-                          word.transcription, 
-                          style: const TextStyle(fontSize: 18, color: Colors.grey)
-                        ),
-                      
-                      const SizedBox(height: 20),
-
-                      // --- Перевод ---
-                      Text(
-                        word.translation, 
-                        style: const TextStyle(fontSize: 28),
-                        textAlign: TextAlign.center,
-                      ),
-                      
-                      const SizedBox(height: 40),
-
-                      // --- Кнопки действий ---
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () => _markAsLearnedAndLoadNext(word.id),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.grey[300]),
-                            child: const Text('Знаю слово'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => _startLearning(word.id),
-                            child: const Text('Начать учить'),
-                          ),
-                        ],
-                      ),
-                    ],
+                padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF7FFF8), Color(0xFFE8F8EA)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2E7D32).withOpacity(0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // --- Английское слово и кнопка озвучки ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            word.word, 
+                            style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)),
+                            textAlign: TextAlign.center,
+                          )
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.volume_up, color: Color(0xFF2E7D32)),
+                          iconSize: 30,
+                          onPressed: () => _ttsService.speak(word.word),
+                        ),
+                      ],
+                    ),
+
+                    // --- Транскрипция (если есть) ---
+                    if (word.transcription.isNotEmpty)
+                      Text(
+                        word.transcription, 
+                        style: const TextStyle(fontSize: 18, color: Colors.grey)
+                      ),
+                    
+                    const SizedBox(height: 20),
+
+                    // --- Перевод ---
+                    Text(
+                      word.translation, 
+                      style: const TextStyle(fontSize: 28, color: Color(0xFF2E7D32)),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: 40),
+
+                    // --- Кнопки действий ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _markAsLearnedAndLoadNext(word.id),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[200],
+                            foregroundColor: Colors.black87,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Знаю слово'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => _startLearning(word.id),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF43A047),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Начать учить'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
+             );
+           },
+         ),
+       ),
+     );
+   }
+ }

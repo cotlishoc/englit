@@ -51,10 +51,10 @@ class MyApp extends StatelessWidget {
         // --- ТЕМА ПРИЛОЖЕНИЯ ---
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF81C784), // Основной светло-зелёный цвет
+            seedColor: const Color(0xFF2E7D32), // Более глубокий зелёный
             brightness: Brightness.light,
           ),
-          scaffoldBackgroundColor: const Color(0xFFF6FFF8), // Очень светлый фон
+          scaffoldBackgroundColor: const Color(0xFFF1F8F3), // Очень светлый фон с зелёной ноткой
           useMaterial3: true,
           
           // Стиль для AppBar (верхняя панель)
@@ -62,9 +62,9 @@ class MyApp extends StatelessWidget {
             backgroundColor: Color(0xFFE8F5E9),
             surfaceTintColor: Color(0xFFE8F5E9),
             elevation: 0,
-            iconTheme: IconThemeData(color: Color(0xFF388E3C)),
+            iconTheme: IconThemeData(color: Color(0xFF1B5E20)),
             titleTextStyle: TextStyle(
-              color: Color(0xFF388E3C),
+              color: Color(0xFF1B5E20),
               fontWeight: FontWeight.bold,
               fontSize: 22,
             ),
@@ -72,7 +72,29 @@ class MyApp extends StatelessWidget {
           
           // Основной стиль текста в приложении
           textTheme: const TextTheme(
-            bodyMedium: TextStyle(color: Color(0xFF388E3C)),
+            bodyMedium: TextStyle(color: Color(0xFF1B5E20)),
+            headlineMedium: TextStyle(color: Color(0xFF1B5E20)),
+          ),
+
+          cardTheme: CardThemeData(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 4,
+          ),
+
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF43A047),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 4,
+            ),
+          ),
+
+          inputDecorationTheme: InputDecorationTheme(
+            filled: true,
+            fillColor: const Color(0xFFEFF7EF),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
           ),
         ),
         

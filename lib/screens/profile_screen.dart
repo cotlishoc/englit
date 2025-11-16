@@ -81,7 +81,7 @@ class ProfileScreen extends StatelessWidget {
                 icon: const Icon(Icons.logout),
                 label: const Text('Выйти'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF9A9A), // Мягкий красный цвет
+                  backgroundColor: const Color(0xFFFFCDD2), // Мягкий красный фон
                   foregroundColor: const Color(0xFFC62828), // Темно-красный текст/иконка
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                   textStyle: const TextStyle(

@@ -159,24 +159,46 @@ class _RepeatScreenState extends State<RepeatScreen> {
 
   /// Виджет для выбора типа упражнения.
   Widget _buildTypeSelection(List<WordModel> words) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('Слов для повторения: ${words.length}', style: TextStyle(fontSize: 18, color: Colors.grey[700])),
-          const SizedBox(height: 20),
-          const Text('Выберите тип упражнения', style: TextStyle(fontSize: 22)),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () => _startQuiz(ExerciseType.multipleChoice, words),
-            child: const Text('Выбор из вариантов'),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: () => _startQuiz(ExerciseType.writeTranslation, words),
-            child: const Text('Написать перевод'),
-          ),
-        ],
+    return SizedBox.expand(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Слов для повторения: ${words.length}', style: TextStyle(fontSize: 18, color: Colors.grey[700])),
+            const SizedBox(height: 20),
+            const Text('Выберите тип упражнения', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _startQuiz(ExerciseType.multipleChoice, words),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 6,
+                ),
+                child: const Text('Выбор из вариантов', style: TextStyle(fontSize: 18)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _startQuiz(ExerciseType.writeTranslation, words),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black87,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 2,
+                ),
+                child: const Text('Написать перевод', style: TextStyle(fontSize: 18)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -185,29 +207,60 @@ class _RepeatScreenState extends State<RepeatScreen> {
   Widget _buildQuizBody() {
     if (_currentQuestion == null) {
       // Экран завершения викторины.
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('Сессия завершена!', style: TextStyle(fontSize: 24)),
-            const SizedBox(height: 20),
-            ElevatedButton(onPressed: (){
-              Navigator.of(context).pop(); // Возвращаемся на главный экран
-            }, child: const Text('Отлично')),
-          ],
-        )
+      return SizedBox.expand(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('Сессия завершена!', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: 220,
+                child: ElevatedButton(
+                  onPressed: (){
+                    Navigator.of(context).pop(); // Возвращаемся на главный экран
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), padding: const EdgeInsets.symmetric(vertical: 14)),
+                  child: const Text('Отлично', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Text(_currentQuestion!.word, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 30),
-          if (_exerciseType == ExerciseType.multipleChoice) ..._buildMultipleChoiceOptions(),
-          if (_exerciseType == ExerciseType.writeTranslation) _buildWriteTranslation(),
-        ],
+    // Основной полноэкранный вид викторины: вопрос сверху по центру, варианты — полноширинные кнопки
+    return SizedBox.expand(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            // Вопрос
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Text(
+                _currentQuestion!.word,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_exerciseType == ExerciseType.multipleChoice) ..._buildMultipleChoiceOptions(),
+                    if (_exerciseType == ExerciseType.writeTranslation) _buildWriteTranslation(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -216,8 +269,21 @@ class _RepeatScreenState extends State<RepeatScreen> {
   List<Widget> _buildMultipleChoiceOptions() {
     if (_showPostAnswerOptions) return _buildPostAnswerOptions();
     return _options.map((option) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: ElevatedButton(onPressed: () => _checkAnswer(option), child: Text(option)),
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => _checkAnswer(option),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black87,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+          ),
+          child: Text(option, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+        ),
+      ),
     )).toList();
   }
 
@@ -225,31 +291,49 @@ class _RepeatScreenState extends State<RepeatScreen> {
     if (_showPostAnswerOptions) return Column(children: _buildPostAnswerOptions());
     return Column(
       children: [
+        const SizedBox(height: 12),
         TextField(
           controller: _textController,
-          decoration: const InputDecoration(labelText: 'Введите перевод'),
+          decoration: const InputDecoration(
+            labelText: 'Введите перевод',
+            filled: true,
+            fillColor: Color(0xFFF3FFF5),
+            border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+          ),
           textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 20),
           onSubmitted: (value) => _checkAnswer(value),
         ),
-        const SizedBox(height: 20),
-        ElevatedButton(onPressed: () => _checkAnswer(_textController.text), child: const Text('Проверить'))
+        const SizedBox(height: 22),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => _checkAnswer(_textController.text),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), padding: const EdgeInsets.symmetric(vertical: 16)),
+            child: const Text('Проверить', style: TextStyle(fontSize: 18)),
+          ),
+        ),
       ],
     );
   }
 
-  /// Виджет, который показывается после правильного ответа.
+  /// Виджет, который показыется после правильного ответа.
   List<Widget> _buildPostAnswerOptions() {
     return [
-      const Text('Правильно!', style: TextStyle(fontSize: 22, color: Colors.green)),
+      const Text('Правильно!', style: TextStyle(fontSize: 26, color: Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
       const SizedBox(height: 20),
-      ElevatedButton(
-        onPressed: () => _nextQuestion(),
-        child: const Text('Продолжить'),
+      SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => _nextQuestion(),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32), padding: const EdgeInsets.symmetric(vertical: 14)),
+          child: const Text('Продолжить', style: TextStyle(fontSize: 18)),
+        ),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: 12),
       TextButton(
         onPressed: () => _nextQuestion(true),
-        child: const Text('Я знаю это слово (убрать из повторений)'),
+        child: const Text('Я знаю это слово (убрать из повторений)', style: TextStyle(fontSize: 16)),
       ),
     ];
   }

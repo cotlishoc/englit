@@ -129,60 +129,114 @@ class _DictionaryScreenState extends State<DictionaryScreen> {
                     // ИЛИ если у слова в принципе нет ссылки на категорию (это наш признак кастомного слова).
                     final bool isCustomWord = isCustomCategorySelected || word.category == null;
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      child: ListTile(
-                        title: Text(word.word),
-                        subtitle: Text(word.translation),
-                        leading: IconButton(
-                          icon: Icon(Icons.volume_up, color: Theme.of(context).primaryColor),
-                          onPressed: () => _ttsService.speak(word.word),
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: status == 'learned'
+                              ? [Color(0xFFE8F5E9), Color(0xFFDFF3E0)]
+                              : [Color(0xFFF7FFF8), Color(0xFFEEFFF0)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        trailing: isCustomWord
-                          ? IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                              tooltip: 'Удалить слово',
-                              onPressed: () {
-                                // Показываем диалог подтверждения перед удалением
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext ctx) {
-                                    return AlertDialog(
-                                      title: const Text('Подтвердить удаление'),
-                                      content: Text('Вы уверены, что хотите удалить слово "${word.word}"?'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.of(ctx).pop(),
-                                          child: const Text('Отмена'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            _firestoreService.deleteUserCustomWord(word.id).then((_) {
-                                              _loadWords();
-                                            });
-                                            Navigator.of(ctx).pop();
-                                          },
-                                          child: const Text('Удалить', style: TextStyle(color: Colors.red)),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            )
-                          : IconButton(
-                              icon: status == 'learned' 
-                                ? const Icon(Icons.check_circle, color: Colors.green)
-                                : const Icon(Icons.school_outlined, color: Colors.grey),
-                              tooltip: status == 'learned' ? 'Вернуть в изучение' : 'Отметить как "знаю"',
-                              onPressed: () {
-                                if (status == 'learned') {
-                                  _resetToLearning(word.id);
-                                } else {
-                                  _markAsLearned(word.id);
-                                }
-                              },
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                        border: Border.all(color: const Color(0xFFE8F5E9)),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        title: Text(word.word, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        subtitle: Text(word.translation, style: const TextStyle(color: Colors.black87)),
+                        leading: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _ttsService.speak(word.word),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFB9F6CA),
+                              borderRadius: BorderRadius.circular(12),
                             ),
+                            child: const Icon(Icons.volume_up, color: Color(0xFF2E7D32)),
+                          ),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isCustomWord)
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                tooltip: 'Удалить слово',
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext ctx) {
+                                      return AlertDialog(
+                                        title: const Text('Подтвердить удаление'),
+                                        content: Text('Вы уверены, что хотите удалить слово "${word.word}"?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.of(ctx).pop(),
+                                            child: const Text('Отмена'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              _firestoreService.deleteUserCustomWord(word.id).then((_) {
+                                                _loadWords();
+                                              });
+                                              Navigator.of(ctx).pop();
+                                            },
+                                            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              )
+                            else ...[
+                              GestureDetector(
+                                onTap: () {
+                                  if (status == 'learned') {
+                                    _resetToLearning(word.id);
+                                  } else {
+                                    _markAsLearned(word.id);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: status == 'learned' ? const Color(0xFFDFF3E0) : const Color(0xFFF0FFF4),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        status == 'learned' ? Icons.check_circle : Icons.school_outlined,
+                                        color: status == 'learned' ? const Color(0xFF2E7D32) : Colors.grey,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        status == 'learned' ? 'Знаю' : 'Учить',
+                                        style: TextStyle(
+                                          color: status == 'learned' ? const Color(0xFF2E7D32) : Colors.grey[700],
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ]
+                          ],
+                        ),
                       ),
                     );
                   },

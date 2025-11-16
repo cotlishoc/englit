@@ -9,7 +9,7 @@ class LoginScreen extends StatelessWidget {
     final authService = AuthService();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6FFF8),
+      backgroundColor: const Color(0xFFF3FFF5),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -19,7 +19,7 @@ class LoginScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 48,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF388E3C),
+                color: Color(0xFF2E7D32),
               ),
             ),
             const SizedBox(height: 10),
@@ -39,11 +39,12 @@ class LoginScreen extends StatelessWidget {
               label: const Text('Войти через Google'),
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.black87, backgroundColor: Colors.white,
-                minimumSize: const Size(250, 50),
+                minimumSize: const Size(260, 56),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
+                  borderRadius: BorderRadius.circular(28),
                 ),
-                elevation: 2,
+                elevation: 4,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
             ),
           ],
