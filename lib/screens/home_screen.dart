@@ -319,7 +319,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   Widget _buildStatsContent(int learnedCount, int repetitionCount) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final learnedColor = Theme.of(context).colorScheme.primary;
     final learningColor = Theme.of(context).colorScheme.primaryContainer;
     
