@@ -40,12 +40,13 @@ class FirestoreService {
     } 
     else if (categoryId == 'all_words') {
       snapshot = await _db.collection('words').get();
+      return snapshot.docs.map((doc) => WordModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)).toList();
     } 
     else {
       final categoryRef = _db.collection('category').doc(categoryId);
       snapshot = await _db.collection('words').where('category', isEqualTo: categoryRef).get();
+      return snapshot.docs.map((doc) => WordModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)).toList();
     }
-    return snapshot.docs.map((doc) => WordModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)).toList();
   }
 
   Future<WordModel?> getNewWordToStudy(String categoryId) async {
@@ -62,25 +63,60 @@ class FirestoreService {
     return null;
   }
 
-  Future<List<WordModel>> getWordsToRepeat(String categoryId) async {
-    if (_uid == null) return [];
+Future<List<WordModel>> getWordsToRepeat(String categoryId) async {
+  if (_uid == null) return [];
+  
+  try {
+    // Получаем все слова, которые пользователь изучает
     final userWordsSnapshot = await _db.collection('users')
       .doc(_uid)
       .collection('userWords')
       .where('status', isEqualTo: 'learning')
       .get();
+    
     if (userWordsSnapshot.docs.isEmpty) return [];
+    
     final studyingWordIds = userWordsSnapshot.docs.map((doc) => doc.id).toList();
+    
     if (studyingWordIds.isEmpty) return [];
-    Query wordsQuery = _db.collection('words').where(FieldPath.documentId, whereIn: studyingWordIds);
-    if (categoryId != 'all_words' && categoryId != 'user_words') {
-      final categoryRef = _db.collection('category').doc(categoryId);
-      wordsQuery = wordsQuery.where('category', isEqualTo: categoryRef);
+    
+    if (categoryId == 'user_words') {
+      // Для пользовательских слов - получаем из customWords
+      final customWordsSnapshot = await _db.collection('users')
+        .doc(_uid)
+        .collection('customWords')
+        .get();
+      
+      // Фильтруем локально
+      return customWordsSnapshot.docs
+        .where((doc) => studyingWordIds.contains(doc.id))
+        .map((doc) => WordModel.fromCustom(doc.data() as Map<String, dynamic>, doc.id))
+        .toList();
+    } 
+    else {
+      // Для обычных категорий и "всех слов" - получаем все слова и фильтруем локально
+      QuerySnapshot wordsSnapshot;
+      
+      if (categoryId == 'all_words') {
+        wordsSnapshot = await _db.collection('words').get();
+      } else {
+        final categoryRef = _db.collection('category').doc(categoryId);
+        wordsSnapshot = await _db.collection('words')
+          .where('category', isEqualTo: categoryRef)
+          .get();
+      }
+      
+      // Фильтруем локально по studyingWordIds
+      return wordsSnapshot.docs
+        .where((doc) => studyingWordIds.contains(doc.id))
+        .map((doc) => WordModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
+        .toList();
     }
-    final wordsSnapshot = await wordsQuery.get();
-    // ИСПРАВЛЕНИЕ ЗДЕСЬ
-    return wordsSnapshot.docs.map((doc) => WordModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id)).toList();
+  } catch (e) {
+    print("Ошибка при загрузке слов для повторения: $e");
+    return [];
   }
+}
 
   // Добавлен метод для получения ежедневной статистики по датам в диапазоне [from, to]
   Future<Map<String, Map<String, int>>> getDailyStats(DateTime from, DateTime to) async {
@@ -184,8 +220,7 @@ class FirestoreService {
     final lowerWord = word.toLowerCase();
     
     // Проверка в основной базе
-    final mainQuery = await _db.collection('words')
-      .get();
+    final mainQuery = await _db.collection('words').get();
     for (var doc in mainQuery.docs) {
       final docWord = (doc.data()['word'] as String?)?.toLowerCase();
       if (docWord == lowerWord) {
